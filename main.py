@@ -30,14 +30,14 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-await bot.wait_until_ready()
-await bot.add_cog(GroupManagement(bot))  
-try:
-    synced = await bot.tree.sync()
-    print(f"[DEBUG] Comandi slash sincronizzati: {len(synced)}")
-except Exception as e:
-    print(f"[DEBUG] Errore sincronizzazione: {e}")
-print(f"[DEBUG] Bot connesso come {bot.user}")
+    await bot.wait_until_ready()
+    await bot.add_cog(GroupManagement(bot))  
+    try:
+        synced = await bot.tree.sync()
+        print(f"[DEBUG] Comandi slash sincronizzati: {len(synced)}")
+    except Exception as e:
+        print(f"[DEBUG] Errore sincronizzazione: {e}")
+    print(f"[DEBUG] Bot connesso come {bot.user}")
 
 # UTILITY
 def normalizza(testo):
