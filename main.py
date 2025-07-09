@@ -6,6 +6,7 @@ from flask import Flask
 from threading import Thread
 import unicodedata
 import requests
+import asyncio
 
 # FLASK
 app = Flask('')
@@ -38,12 +39,12 @@ async def on_ready():
         print(f"[DEBUG] Errore sincronizzazione: {e}")
     print(f"[DEBUG] Bot connesso come {bot.user}")
 
+# UTILITY
 def normalizza(testo):
     testo = testo.lower().replace(" ", "").replace("-", "")
     return ''.join(c for c in unicodedata.normalize('NFD', testo)
                    if unicodedata.category(c) != 'Mn')
 
-# FUNZIONE RUOLI
 def trova_ruolo(nome, ruoli):
     nome_norm = normalizza(nome)
     for r in ruoli:
@@ -54,6 +55,7 @@ def trova_ruolo(nome, ruoli):
         if nome_norm in n and not n.startswith("allievo"):
             return r
     return None
+
 #----------------------------------------------------------------------------------------------------------------------------
 
 # ✅ GRUPPO ROBLOX
@@ -112,10 +114,11 @@ class GroupManagement(commands.Cog):
             return
 
         success = self.set_user_role(user_id, target_role["id"])
+        await asyncio.sleep(1)
         if success:
             await interaction.followup.send(f"✅ {username} è stato promosso al ruolo **{target_role['name']}**.")
         else:
-            await interaction.followup.send("❌ Errore nella promozione. Verifica i permessi e il cookie.")
+            await interaction.followup.send("❌ Errore nella promozione. Verifica il cookie o i permessi.")
 
     @app_commands.command(name="demote_group", description="Degrada un utente nel gruppo Roblox.")
     @app_commands.describe(username="Username Roblox", role_name="Ruolo attuale")
@@ -141,6 +144,7 @@ class GroupManagement(commands.Cog):
 
         new_role = roles[current_index - 1]
         success = self.set_user_role(user_id, new_role["id"])
+        await asyncio.sleep(1)
         if success:
             await interaction.followup.send(f"🔻 {username} è stato degradato al ruolo **{new_role['name']}**.")
         else:
@@ -169,16 +173,16 @@ class GroupManagement(commands.Cog):
             return
 
         success = self.set_user_role(user_id, default_role["id"])
-       if success:
-    await asyncio.sleep(1)
-    await interaction.followup.send(
-        f"✅ {username} è stato accettato nel gruppo con il ruolo **{default_role['name']}**."
-    )
-else:
-    await asyncio.sleep(1)
-    await interaction.followup.send(
-        "❌ Errore durante l'assegnazione del ruolo. Verifica il cookie o i permessi."
-    )
+        await asyncio.sleep(1)
+        if success:
+            await interaction.followup.send(
+                f"✅ {username} è stato accettato nel gruppo con il ruolo **{default_role['name']}**."
+            )
+        else:
+            await interaction.followup.send(
+                "❌ Errore durante l'assegnazione del ruolo. Verifica il cookie o i permessi."
+            )
+
 #---------------------------------------------------------------------------------------------------------------------------
 
 # 🚀 Avvio bot
