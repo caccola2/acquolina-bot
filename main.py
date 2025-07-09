@@ -15,8 +15,8 @@ app = Flask('')
 def funzione():
     return "Bot attivo."
 
-def run():
-app.run(host='0.0.0.0', port=8080)
+def funzione():
+    app.run(host='0.0.0.0', port=8080)
 
 Thread(target=run).start()
 
