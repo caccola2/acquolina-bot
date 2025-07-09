@@ -40,21 +40,23 @@ async def on_ready():
     print(f"[DEBUG] Bot connesso come {bot.user}")
 
 # UTILITY
-def funzione():
+def normalizza(testo):
     testo = testo.lower().replace(" ", "").replace("-", "")
-return ''.join(c for c in unicodedata.normalize('NFD', testo)
-               if unicodedata.category(c) != 'Mn')
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', testo)
+        if unicodedata.category(c) != 'Mn'
+    )
 
 def trova_ruolo(nome, ruoli):
-nome_norm = normalizza(nome)
-for r in ruoli:
-    if nome_norm == normalizza(r.name):
-        return r
-for r in ruoli:
-    n = normalizza(r.name)
-    if nome_norm in n and not n.startswith("allievo"):
-        return r
-return None
+    nome_norm = normalizza(nome)
+    for r in ruoli:
+        if nome_norm == normalizza(r.name):
+            return r
+    for r in ruoli:
+        n = normalizza(r.name)
+        if nome_norm in n and not n.startswith("allievo"):
+            return r
+    return None
 
 #----------------------------------------------------------------------------------------------------------------------------
 
