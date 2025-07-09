@@ -67,20 +67,20 @@ class GroupManagement(commands.Cog):
         }
         self.group_id = 34146252  # ID fisso del gruppo Roblox
 
-def get_user_id(self, username):
-    try:
-        r = requests.post(
-            "https://users.roblox.com/v1/usernames/users",
-            json={"usernames": [username], "excludeBannedUsers": True}
-        )
-        if r.status_code == 200:
-            data = r.json()
-            if data["data"]:
-                return data["data"][0]["id"]
-        return None
-    except Exception as e:
-        print(f"[DEBUG] Errore nella richiesta get_user_id: {e}")
-        return None
+    def get_user_id(self, username):
+        try:
+            r = requests.post(
+                "https://users.roblox.com/v1/usernames/users",
+                json={"usernames": [username], "excludeBannedUsers": True}
+            )
+            if r.status_code == 200:
+                data = r.json()
+                if data["data"]:
+                    return data["data"][0]["id"]
+            return None
+        except Exception as e:
+            print(f"[DEBUG] Errore nella richiesta get_user_id: {e}")
+            return None
 
     def get_group_roles(self):
         r = requests.get(f"https://groups.roblox.com/v1/groups/{self.group_id}/roles")
