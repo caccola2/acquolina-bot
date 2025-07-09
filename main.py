@@ -1,7 +1,7 @@
 import os
 import discord
 from discord.ext import commands
-from discord import app_commands, ui, Interaction, TextStyle
+from discord import app_commands, Interaction
 from flask import Flask
 from threading import Thread
 import unicodedata
@@ -27,17 +27,6 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-@bot.event
-async def on_ready():
-    await bot.wait_until_ready()
-    await bot.add_cog(GroupManagement(bot))  
-    try:
-        synced = await bot.tree.sync()
-        print(f"[DEBUG] Comandi slash sincronizzati: {len(synced)}")
-    except Exception as e:
-        print(f"[DEBUG] Errore sincronizzazione: {e}")
-    print(f"[DEBUG] Bot connesso come {bot.user}")
-
 # UTILITY
 def normalizza(testo):
     testo = testo.lower().replace(" ", "").replace("-", "")
@@ -59,7 +48,7 @@ def trova_ruolo(nome, ruoli):
 
 #----------------------------------------------------------------------------------------------------------------------------
 
-# ✅ GRUPPO ROBLOX
+#COMANDI GRUPPO
 class GroupManagement(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -70,7 +59,7 @@ class GroupManagement(commands.Cog):
         }
         self.group_id = 34146252  # ID fisso del gruppo Roblox
 
-    def get_user_id(self, username):
+    def get_user_id(self, username: str) -> int | None:
         try:
             r = requests.post(
                 "https://users.roblox.com/v1/usernames/users",
@@ -89,7 +78,7 @@ class GroupManagement(commands.Cog):
         r = requests.get(f"https://groups.roblox.com/v1/groups/{self.group_id}/roles")
         return r.json().get("roles", [])
 
-    def set_user_role(self, user_id, role_id):
+    def set_user_role(self, user_id: int, role_id: int) -> bool:
         r = requests.patch(
             f"https://groups.roblox.com/v1/groups/{self.group_id}/users/{user_id}",
             headers=self.headers,
@@ -99,7 +88,7 @@ class GroupManagement(commands.Cog):
 
     @app_commands.command(name="promote_group", description="Promuovi un utente nel gruppo Roblox.")
     @app_commands.describe(username="Username Roblox", role_name="Nome del ruolo target")
-    async def promote_group(self, interaction: discord.Interaction, username: str, role_name: str):
+    async def promote_group(self, interaction: Interaction, username: str, role_name: str):
         await interaction.response.defer()
 
         user_id = self.get_user_id(username)
@@ -123,7 +112,7 @@ class GroupManagement(commands.Cog):
 
     @app_commands.command(name="demote_group", description="Degrada un utente nel gruppo Roblox.")
     @app_commands.describe(username="Username Roblox", role_name="Ruolo attuale")
-    async def demote_group(self, interaction: discord.Interaction, username: str, role_name: str):
+    async def demote_group(self, interaction: Interaction, username: str, role_name: str):
         await interaction.response.defer()
 
         user_id = self.get_user_id(username)
@@ -151,59 +140,56 @@ class GroupManagement(commands.Cog):
         else:
             await interaction.followup.send("❌ Errore nella degradazione.")
 
-@app_commands.command(
-    name="accept_group",
-    description="Accetta un utente nel gruppo Roblox assegnandogli il primo ruolo disponibile."
-)
-@app_commands.describe(username="Username Roblox")
-async def accept_group(self, interaction, username: str):
-    await interaction.response.defer()
-
-    user_id = self.get_user_id(username)
-    if not user_id:
-        await interaction.followup.send("❌ Username non valido.")
-        return
-
-    roles = sorted(self.get_group_roles(), key=lambda x: x["rank"])
-    default_role = next(
-        (r for r in roles if r["rank"] > 0 and not r["name"].lower().startswith("guest")),
-        None
+    @app_commands.command(
+        name="accept_group",
+        description="Accetta un utente nel gruppo Roblox assegnandogli il primo ruolo disponibile."
     )
-
-    if not default_role:
-        await interaction.followup.send("❌ Nessun ruolo valido trovato.")
-        return
-
-    success = self.set_user_role(user_id, default_role["id"])
-
-    if success:
-        await interaction.followup.send(
-            f"✅ {username} è stato accettato nel gruppo con il ruolo **{default_role['name']}**."
-        )
-    else:
-        await interaction.followup.send(
-            "❌ Errore durante l'assegnazione del ruolo. Verifica il cookie o i permessi."
-        )
-
-@app_commands.command()
-async def accept_group(self, interaction: discord.Interaction):
-    try:
-        # Operazioni che potrebbero generare rate limit
+    @app_commands.describe(username="Username Roblox")
+    async def accept_group(self, interaction: Interaction, username: str):
         await interaction.response.defer()
-        
-        # ... codice per assegnazione ruolo ecc.
 
-        await interaction.followup.send("Ruolo assegnato con successo.")
-    except discord.HTTPException as e:
-        if e.status == 429:
-            # Log o messaggio per rate limit
-            await interaction.followup.send("⚠️ Sto ricevendo troppe richieste, riprova tra un attimo.")
+        user_id = self.get_user_id(username)
+        if not user_id:
+            await interaction.followup.send("❌ Username non valido.")
+            return
+
+        roles = sorted(self.get_group_roles(), key=lambda x: x["rank"])
+        default_role = next(
+            (r for r in roles if r["rank"] > 0 and not r["name"].lower().startswith("guest")),
+            None
+        )
+
+        if not default_role:
+            await interaction.followup.send("❌ Nessun ruolo valido trovato.")
+            return
+
+        success = self.set_user_role(user_id, default_role["id"])
+
+        if success:
+            await interaction.followup.send(
+                f"✅ {username} è stato accettato nel gruppo con il ruolo **{default_role['name']}**."
+            )
         else:
-            raise
+            await interaction.followup.send(
+                "❌ Errore durante l'assegnazione del ruolo. Verifica il cookie o i permessi."
+            )
 
 #---------------------------------------------------------------------------------------------------------------------------
 
-# 🚀 Avvio bot
+@bot.event
+async def on_ready():
+    await bot.wait_until_ready()
+    await bot.add_cog(GroupManagement(bot))
+    try:
+        synced = await bot.tree.sync()
+        print(f"[DEBUG] Comandi slash sincronizzati: {len(synced)}")
+    except Exception as e:
+        print(f"[DEBUG] Errore sincronizzazione: {e}")
+    print(f"[DEBUG] Bot connesso come {bot.user}")
+
+#---------------------------------------------------------------------------------------------------------------------------
+
+# AVVIO
 if __name__ == "__main__":
     token = os.getenv("ACQUOLINA_TOKEN")
     if token:
