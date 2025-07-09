@@ -151,40 +151,39 @@ class GroupManagement(commands.Cog):
         else:
             await interaction.followup.send("❌ Errore nella degradazione.")
 
-@app_commands.command(
-    name="accept_group",
-    description="Accetta un utente nel gruppo Roblox assegnandogli il primo ruolo disponibile."
-)
-@app_commands.describe(username="Username Roblox")
-async def accept_group(self, interaction: discord.Interaction, username: str):
-    await interaction.response.defer()  # DEFER subito
-
-    user_id = self.get_user_id(username)
-    if not user_id:
-        await interaction.followup.send("❌ Username non valido.")
-        return
-
-    roles = sorted(self.get_group_roles(), key=lambda x: x["rank"])
-    default_role = next(
-        (r for r in roles if r["rank"] > 0 and not r["name"].lower().startswith("guest")),
-        None
+    @app_commands.command(
+        name="accept_group",
+        description="Accetta un utente nel gruppo Roblox assegnandogli il primo ruolo disponibile."
     )
+    @app_commands.describe(username="Username Roblox")
+    async def accept_group(self, interaction: discord.Interaction, username: str):
+        await interaction.response.defer()
 
-    if not default_role:
-        await interaction.followup.send("❌ Nessun ruolo valido trovato.")
-        return
+        user_id = self.get_user_id(username)
+        if not user_id:
+            await interaction.followup.send("❌ Username non valido.")
+            return
 
-    success = self.set_user_role(user_id, default_role["id"])
-    # await asyncio.sleep(1)  # Evita sleep che fa scadere l'interazione
-
-    if success:
-        await interaction.followup.send(
-            f"✅ {username} è stato accettato nel gruppo con il ruolo **{default_role['name']}**."
+        roles = sorted(self.get_group_roles(), key=lambda x: x["rank"])
+        default_role = next(
+            (r for r in roles if r["rank"] > 0 and not r["name"].lower().startswith("guest")),
+            None
         )
-    else:
-        await interaction.followup.send(
-            "❌ Errore durante l'assegnazione del ruolo. Verifica il cookie o i permessi."
-        )
+
+        if not default_role:
+            await interaction.followup.send("❌ Nessun ruolo valido trovato.")
+            return
+
+        success = self.set_user_role(user_id, default_role["id"])
+
+        if success:
+            await interaction.followup.send(
+                f"✅ {username} è stato accettato nel gruppo con il ruolo **{default_role['name']}**."
+            )
+        else:
+            await interaction.followup.send(
+                "❌ Errore durante l'assegnazione del ruolo. Verifica il cookie o i permessi."
+            )
 
 #---------------------------------------------------------------------------------------------------------------------------
 
