@@ -185,6 +185,22 @@ class GroupManagement(commands.Cog):
                 "❌ Errore durante l'assegnazione del ruolo. Verifica il cookie o i permessi."
             )
 
+@app_commands.command()
+async def accept_group(self, interaction: discord.Interaction):
+    try:
+        # Operazioni che potrebbero generare rate limit
+        await interaction.response.defer()
+        
+        # ... codice per assegnazione ruolo ecc.
+
+        await interaction.followup.send("Ruolo assegnato con successo.")
+    except discord.HTTPException as e:
+        if e.status == 429:
+            # Log o messaggio per rate limit
+            await interaction.followup.send("⚠️ Sto ricevendo troppe richieste, riprova tra un attimo.")
+        else:
+            raise
+
 #---------------------------------------------------------------------------------------------------------------------------
 
 # 🚀 Avvio bot
