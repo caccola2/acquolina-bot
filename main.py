@@ -156,7 +156,7 @@ class GroupManagement(commands.Cog):
     description="Accetta un utente nel gruppo Roblox assegnandogli il primo ruolo disponibile."
 )
 @app_commands.describe(username="Username Roblox")
-async def accept_group(self, interaction: discord.Interaction, username: str): 
+async def accept_group(self, interaction, username: str):
     await interaction.response.defer()
 
     user_id = self.get_user_id(username)
