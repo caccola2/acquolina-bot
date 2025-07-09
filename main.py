@@ -192,9 +192,9 @@ class GroupManagement(commands.Cog):
 
 # 🚀 Avvio bot
 if __name__ == "__main__":
-token = os.getenv("ACQUOLINA_TOKEN")
-if token:
-    print("[DEBUG] Avvio bot...")
-    bot.run(token)
-else:
-    print("[DEBUG] Variabile ACQUOLINA_TOKEN non trovata.")
+    token = os.getenv("ACQUOLINA_TOKEN")
+    if token:
+        print("[DEBUG] Avvio bot...")
+        bot.run(token)
+    else:
+        print("[DEBUG] Variabile ACQUOLINA_TOKEN non trovata.")
