@@ -8,14 +8,13 @@ import unicodedata
 import requests
 import asyncio
 
-# FLASK
 app = Flask('')
 
 @app.route('/')
 def funzione():
     return "Bot attivo."
 
-def funzione():
+def run():
     app.run(host='0.0.0.0', port=8080)
 
 Thread(target=run).start()
