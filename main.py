@@ -169,15 +169,16 @@ class GroupManagement(commands.Cog):
             return
 
         success = self.set_user_role(user_id, default_role["id"])
-        if success:
-            await interaction.followup.send(
-                f"✅ {username} è stato accettato nel gruppo con il ruolo **{default_role['name']}**."
-            )
-        else:
-            await interaction.followup.send(
-                "❌ Errore durante l'assegnazione del ruolo. Verifica il cookie o i permessi."
-            )
-
+       if success:
+    await asyncio.sleep(1)
+    await interaction.followup.send(
+        f"✅ {username} è stato accettato nel gruppo con il ruolo **{default_role['name']}**."
+    )
+else:
+    await asyncio.sleep(1)
+    await interaction.followup.send(
+        "❌ Errore durante l'assegnazione del ruolo. Verifica il cookie o i permessi."
+    )
 #---------------------------------------------------------------------------------------------------------------------------
 
 # 🚀 Avvio bot
