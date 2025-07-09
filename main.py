@@ -40,8 +40,8 @@ async def on_ready():
     print(f"[DEBUG] Bot connesso come {bot.user}")
 
 # UTILITY
-def normalizza(testo):
-testo = testo.lower().replace(" ", "").replace("-", "")
+def funzione():
+    testo = testo.lower().replace(" ", "").replace("-", "")
 return ''.join(c for c in unicodedata.normalize('NFD', testo)
                if unicodedata.category(c) != 'Mn')
 
