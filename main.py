@@ -166,9 +166,9 @@ async def accept_group(self, interaction: discord.Interaction, username: str):
 
 # 🚀 Avvio bot
 if __name__ == "__main__":
-    token = os.getenv("DISCORD_TOKEN")
+    token = os.getenv("ACQUOLINA_TOKEN")
     if token:
         print("[DEBUG] Avvio bot...")
         bot.run(token)
     else:
-        print("[DEBUG] Variabile DISCORD_TOKEN non trovata.")
+        print("[DEBUG] Variabile ACQUOLINA_TOKEN non trovata.")
