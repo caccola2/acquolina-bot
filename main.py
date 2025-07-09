@@ -151,13 +151,13 @@ class GroupManagement(commands.Cog):
         else:
             await interaction.followup.send("❌ Errore nella degradazione.")
 
-    @app_commands.command(
-        name="accept_group",
-        description="Accetta un utente nel gruppo Roblox assegnandogli il primo ruolo disponibile."
-    )
-    @app_commands.describe(username="Username Roblox")
-    async def accept_group(self, interaction: discord.Interaction, username: str):
-        await interaction.response.defer()
+  @app_commands.command(
+    name="accept_group",
+    description="Accetta un utente nel gruppo Roblox assegnandogli il primo ruolo disponibile."
+)
+@app_commands.describe(username="Username Roblox")
+async def accept_group(self, interaction, username: str): 
+    await interaction.response.defer()
 
         user_id = self.get_user_id(username)
         if not user_id:
