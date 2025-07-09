@@ -65,7 +65,7 @@ class GroupManagement(commands.Cog):
             "Cookie": f".ROBLOSECURITY={self.roblosecurity}",
             "Content-Type": "application/json"
         }
-        self.group_id = 34146252  
+        self.group_id = 8730810  # ID fisso del gruppo Roblox
 
     def get_user_id(self, username):
         r = requests.get(f"https://api.roblox.com/users/get-by-username?username={username}")
@@ -136,32 +136,38 @@ class GroupManagement(commands.Cog):
         else:
             await interaction.followup.send("❌ Errore nella degradazione.")
 
-@app_commands.command(name="accept_group", description="Accetta un utente nel gruppo Roblox assegnandogli il primo ruolo disponibile.")
-@app_commands.describe(username="Username Roblox")
-async def accept_group(self, interaction: discord.Interaction, username: str):
-    await interaction.response.defer()
+    @app_commands.command(name="accept_group", description="Accetta un utente nel gruppo Roblox assegnandogli il primo ruolo disponibile.")
+    @app_commands.describe(username="Username Roblox")
+    async def accept_group(self, interaction: discord.Interaction, username: str):
+        await interaction.response.defer()
 
-    user_id = self.get_user_id(username)
-    if not user_id:
-        await interaction.followup.send("❌ Username non valido.")
-        return
+        user_id = self.get_user_id(username)
+        if not user_id:
+            await interaction.followup.send("❌ Username non valido.")
+            return
 
-    roles = sorted(self.get_group_roles(), key=lambda x: x["rank"])
+        roles = sorted(self.get_group_roles(), key=lambda x: x["rank"])
 
-    default_role = next(
-        (r for r in roles if r["rank"] > 0 and not r["name"].lower().startswith("guest")),
-        None
-    )
+        # Esclude "Guest" o ruoli con rank 0
+        default_role = next(
+            (r for r in roles if r["rank"] > 0 and not r["name"].lower().startswith("guest")),
+            None
+        )
 
-    if not default_role:
-        await interaction.followup.send("❌ Nessun ruolo di ingresso valido trovato.")
-        return
+        if not default_role:
+            await interaction.followup.send("❌ Nessun ruolo valido trovato.")
+            return
 
-    success = self.set_user_role(user_id, default_role["id"])
-    if success:
-        await interaction.followup.send(f"✅ {username} è stato accettato nel gruppo con il ruolo **{default_role['name']}**.")
-    else:
-        await interaction.followup.send("❌ Errore durante l'assegnazione del ruolo. Verifica il cookie o i permessi.")
+        success = self.set_user_role(user_id, default_role["id"])
+        if success:
+            await interaction.followup.send(
+                f"✅ {username} è stato accettato nel gruppo con il ruolo **{default_role['name']}**."
+            )
+        else:
+            await interaction.followup.send(
+                "❌ Errore durante l'assegnazione del ruolo. Verifica il cookie o i permessi."
+            )
+
 #---------------------------------------------------------------------------------------------------------------------------
 
 # 🚀 Avvio bot
