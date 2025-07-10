@@ -59,10 +59,11 @@ class GroupManagement(commands.Cog):
             "Cookie": f".ROBLOSECURITY={self.roblosecurity}",
             "Content-Type": "application/json"
         }
-        self.group_id = 34146252
+        self.group_id = 34146252  # ID fisso del gruppo Roblox
 
     def has_required_role(self, interaction: Interaction) -> bool:
-        return any(role.id == REQUIRED_ROLE_ID for role in interaction.user.roles)
+        member = interaction.guild.get_member(interaction.user.id)
+        return member is not None and any(role.id == REQUIRED_ROLE_ID for role in member.roles)
 
     def get_user_id(self, username: str) -> int | None:
         try:
@@ -79,6 +80,17 @@ class GroupManagement(commands.Cog):
             print(f"[DEBUG] Errore nella richiesta get_user_id: {e}")
             return None
 
+    def get_user_group_info(self, user_id: int):
+        r = requests.get(
+            f"https://groups.roblox.com/v2/users/{user_id}/groups/roles"
+        )
+        if r.status_code == 200:
+            data = r.json()
+            for group in data["data"]:
+                if group["group"]["id"] == self.group_id:
+                    return group["role"]
+        return None
+
     def get_group_roles(self):
         r = requests.get(f"https://groups.roblox.com/v1/groups/{self.group_id}/roles")
         return r.json().get("roles", [])
@@ -89,31 +101,20 @@ class GroupManagement(commands.Cog):
             headers=self.headers,
             json={"roleId": role_id}
         )
+        print(f"[DEBUG] set_user_role: {r.status_code} - {r.text}")
         return r.status_code == 200
 
-    def get_user_group_info(self, user_id: int):
-        r = requests.get(f"https://groups.roblox.com/v2/users/{user_id}/groups/roles")
-        if r.status_code == 200:
-            data = r.json().get("data", [])
-            for group in data:
-                if group["group"]['id'] == self.group_id:
-                    return group['role']
-        return None
-
-    def kick_user(self, user_id: int) -> bool:
-        return self.set_user_role(user_id, self.get_lowest_role()['id'])
-
-    def ban_user(self, user_id: int) -> bool:
-        # Metodo fittizio: Roblox non ha API ufficiali per "ban" nel gruppo.
-        # Puoi sostituire con l'assegnazione a un ruolo "banned" se esiste.
-        banned_role = next((r for r in self.get_group_roles() if r['name'].lower() == "banned"), None)
-        if banned_role:
-            return self.set_user_role(user_id, banned_role['id'])
-        return False
-
-    def get_lowest_role(self):
-        roles = sorted(self.get_group_roles(), key=lambda x: x['rank'])
-        return roles[0] if roles else None
+    def exile_user_from_group(self, user_id: int) -> bool:
+        try:
+            r = requests.delete(
+                f"https://groups.roblox.com/v1/groups/{self.group_id}/users/{user_id}",
+                headers=self.headers
+            )
+            print(f"[DEBUG] exile_user_from_group: {r.status_code} - {r.text}")
+            return r.status_code == 200
+        except Exception as e:
+            print(f"[DEBUG] Errore nell'esilio dal gruppo: {e}")
+            return False
 
     @app_commands.command(name="promote_group", description="Promuovi un utente nel gruppo Roblox.")
     @app_commands.describe(username="Username Roblox", role_name="Nome del ruolo target")
@@ -123,13 +124,14 @@ class GroupManagement(commands.Cog):
             return
 
         await interaction.response.defer(ephemeral=True)
+
         user_id = self.get_user_id(username)
         if not user_id:
             await interaction.followup.send("❌ Username non valido.", ephemeral=True)
             return
 
-        current = self.get_user_group_info(user_id)
-        if current and current['name'].lower() == role_name.lower():
+        current_role = self.get_user_group_info(user_id)
+        if current_role and current_role["name"].lower() == role_name.lower():
             await interaction.followup.send("ℹ️ L'utente ha già questo ruolo.", ephemeral=True)
             return
 
@@ -145,7 +147,7 @@ class GroupManagement(commands.Cog):
         if success:
             await interaction.followup.send(f"✅ {username} è stato promosso al ruolo **{target_role['name']}**.", ephemeral=True)
         else:
-            await interaction.followup.send("❌ Errore nella promozione. Verifica il cookie o i permessi.", ephemeral=True)
+            await interaction.followup.send("❌ Errore nella promozione.", ephemeral=True)
 
     @app_commands.command(name="demote_group", description="Degrada un utente nel gruppo Roblox.")
     @app_commands.describe(username="Username Roblox", role_name="Ruolo attuale")
@@ -155,6 +157,7 @@ class GroupManagement(commands.Cog):
             return
 
         await interaction.response.defer(ephemeral=True)
+
         user_id = self.get_user_id(username)
         if not user_id:
             await interaction.followup.send("❌ Username non valido.", ephemeral=True)
@@ -180,14 +183,18 @@ class GroupManagement(commands.Cog):
         else:
             await interaction.followup.send("❌ Errore nella degradazione.", ephemeral=True)
 
-    @app_commands.command(name="accept_group", description="Accetta un utente nel gruppo Roblox assegnandogli un ruolo.")
-    @app_commands.describe(username="Username Roblox", role_name="Ruolo da assegnare")
+    @app_commands.command(
+        name="accept_group",
+        description="Accetta un utente nel gruppo Roblox assegnandogli il ruolo specificato."
+    )
+    @app_commands.describe(username="Username Roblox", role_name="Ruolo da assegnare dopo l'accettazione")
     async def accept_group(self, interaction: Interaction, username: str, role_name: str):
         if not self.has_required_role(interaction):
             await interaction.response.send_message("❌ Non hai i permessi per usare questo comando.", ephemeral=True)
             return
 
         await interaction.response.defer(ephemeral=True)
+
         user_id = self.get_user_id(username)
         if not user_id:
             await interaction.followup.send("❌ Username non valido.", ephemeral=True)
@@ -198,64 +205,64 @@ class GroupManagement(commands.Cog):
             await interaction.followup.send("ℹ️ L'utente è già nel gruppo.", ephemeral=True)
             return
 
-        banned_role = next((r for r in self.get_group_roles() if r['name'].lower() == 'banned'), None)
-        if banned_role and current_role and current_role['id'] == banned_role['id']:
-            await interaction.followup.send("❌ L'utente è bannato dal gruppo.", ephemeral=True)
+        roles = self.get_group_roles()
+        role = next((r for r in roles if r["name"].lower() == role_name.lower()), None)
+
+        if not role or role["rank"] <= 0:
+            await interaction.followup.send("❌ Ruolo specificato non valido o troppo basso.", ephemeral=True)
             return
 
-        target_role = next((r for r in self.get_group_roles() if r['name'].lower() == role_name.lower()), None)
-        if not target_role:
-            await interaction.followup.send("❌ Ruolo specificato non trovato.", ephemeral=True)
-            return
-
-        success = self.set_user_role(user_id, target_role['id'])
+        success = self.set_user_role(user_id, role["id"])
         if success:
-            await interaction.followup.send(f"✅ {username} è stato accettato nel gruppo con il ruolo **{target_role['name']}**.", ephemeral=True)
+            await interaction.followup.send(
+                f"✅ {username} è stato accettato nel gruppo con il ruolo **{role['name']}**.",
+                ephemeral=True
+            )
         else:
-            await interaction.followup.send("❌ Errore durante l'assegnazione del ruolo.", ephemeral=True)
+            await interaction.followup.send(
+                "❌ Errore durante l'assegnazione del ruolo. Verifica il cookie o i permessi.",
+                ephemeral=True
+            )
 
     @app_commands.command(name="kick_group", description="Espelli un utente dal gruppo Roblox.")
-    @app_commands.describe(username="Username Roblox")
+    @app_commands.describe(username="Username da espellere")
     async def kick_group(self, interaction: Interaction, username: str):
         if not self.has_required_role(interaction):
             await interaction.response.send_message("❌ Non hai i permessi per usare questo comando.", ephemeral=True)
             return
 
         await interaction.response.defer(ephemeral=True)
+
         user_id = self.get_user_id(username)
         if not user_id:
-            await interaction.followup.send("❌ Username non valido.", ephemeral=True)
+            await interaction.followup.send("❌ Username non valido o utente non trovato.", ephemeral=True)
             return
 
-        current_role = self.get_user_group_info(user_id)
-        if not current_role:
-            await interaction.followup.send("ℹ️ L'utente non è nel gruppo.", ephemeral=True)
-            return
-
-        success = self.kick_user(user_id)
+        success = self.exile_user_from_group(user_id)
         if success:
             await interaction.followup.send(f"👢 {username} è stato espulso dal gruppo.", ephemeral=True)
         else:
             await interaction.followup.send("❌ Errore durante l'espulsione.", ephemeral=True)
 
     @app_commands.command(name="ban_group", description="Banna un utente dal gruppo Roblox.")
-    @app_commands.describe(username="Username Roblox")
+    @app_commands.describe(username="Username da bannare")
     async def ban_group(self, interaction: Interaction, username: str):
         if not self.has_required_role(interaction):
             await interaction.response.send_message("❌ Non hai i permessi per usare questo comando.", ephemeral=True)
             return
 
         await interaction.response.defer(ephemeral=True)
+
         user_id = self.get_user_id(username)
         if not user_id:
-            await interaction.followup.send("❌ Username non valido.", ephemeral=True)
+            await interaction.followup.send("❌ Username non valido o utente non trovato.", ephemeral=True)
             return
 
-        success = self.ban_user(user_id)
+        success = self.exile_user_from_group(user_id)
         if success:
-            await interaction.followup.send(f"⛔ {username} è stato bannato dal gruppo.", ephemeral=True)
+            await interaction.followup.send(f"⛔ {username} è stato **bannato** dal gruppo.", ephemeral=True)
         else:
-            await interaction.followup.send("❌ Errore durante il ban. Verifica che esista un ruolo 'Banned'.", ephemeral=True)
+            await interaction.followup.send("❌ Errore durante il ban.", ephemeral=True)
 
 
 #---------------------------------------------------------------------------------------------------------------------------
