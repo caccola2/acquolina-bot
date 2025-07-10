@@ -53,11 +53,7 @@ class GroupManagement(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.roblosecurity = os.getenv("ROBLOX_COOKIE")
-        self.headers = {
-            "Cookie": f".ROBLOSECURITY={self.roblosecurity}",
-            "Content-Type": "application/json"
-        }
-        self.group_id = 34146252  # ID fisso del gruppo Roblox
+        self.group_id = 34146252  # ID fisso
 
     def get_user_id(self, username: str) -> int | None:
         try:
@@ -78,19 +74,33 @@ class GroupManagement(commands.Cog):
         r = requests.get(f"https://groups.roblox.com/v1/groups/{self.group_id}/roles")
         return r.json().get("roles", [])
 
+    def get_csrf_token(self):
+        """Ottiene il token CSRF per autenticare le richieste PATCH."""
+        r = requests.post(
+            "https://auth.roblox.com/v2/logout",
+            headers={"Cookie": f".ROBLOSECURITY={self.roblosecurity}"}
+        )
+        return r.headers.get("x-csrf-token")
+
     def set_user_role(self, user_id: int, role_id: int) -> bool:
+        csrf_token = self.get_csrf_token()
+        headers = {
+            "Cookie": f".ROBLOSECURITY={self.roblosecurity}",
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": csrf_token
+        }
         r = requests.patch(
             f"https://groups.roblox.com/v1/groups/{self.group_id}/users/{user_id}",
-            headers=self.headers,
+            headers=headers,
             json={"roleId": role_id}
         )
+        print(f"[DEBUG] PATCH status: {r.status_code} - {r.text}")
         return r.status_code == 200
 
     @app_commands.command(name="promote_group", description="Promuovi un utente nel gruppo Roblox.")
     @app_commands.describe(username="Username Roblox", role_name="Nome del ruolo target")
     async def promote_group(self, interaction: Interaction, username: str, role_name: str):
         await interaction.response.defer()
-
         user_id = self.get_user_id(username)
         if not user_id:
             await interaction.followup.send("❌ Username non valido.")
@@ -98,7 +108,6 @@ class GroupManagement(commands.Cog):
 
         roles = self.get_group_roles()
         target_role = next((r for r in roles if r["name"].lower() == role_name.lower()), None)
-
         if not target_role:
             await interaction.followup.send("❌ Ruolo non trovato.")
             return
@@ -106,7 +115,7 @@ class GroupManagement(commands.Cog):
         success = self.set_user_role(user_id, target_role["id"])
         await asyncio.sleep(1)
         if success:
-            await interaction.followup.send(f"✅ {username} è stato promosso al ruolo **{target_role['name']}**.")
+            await interaction.followup.send(f"✅ {username} promosso a **{target_role['name']}**.")
         else:
             await interaction.followup.send("❌ Errore nella promozione. Verifica il cookie o i permessi.")
 
@@ -114,7 +123,6 @@ class GroupManagement(commands.Cog):
     @app_commands.describe(username="Username Roblox", role_name="Ruolo attuale")
     async def demote_group(self, interaction: Interaction, username: str, role_name: str):
         await interaction.response.defer()
-
         user_id = self.get_user_id(username)
         if not user_id:
             await interaction.followup.send("❌ Username non valido.")
@@ -122,7 +130,6 @@ class GroupManagement(commands.Cog):
 
         roles = sorted(self.get_group_roles(), key=lambda x: x["rank"])
         current_role = next((r for r in roles if r["name"].lower() == role_name.lower()), None)
-
         if not current_role:
             await interaction.followup.send("❌ Ruolo attuale non trovato.")
             return
@@ -136,43 +143,30 @@ class GroupManagement(commands.Cog):
         success = self.set_user_role(user_id, new_role["id"])
         await asyncio.sleep(1)
         if success:
-            await interaction.followup.send(f"🔻 {username} è stato degradato al ruolo **{new_role['name']}**.")
+            await interaction.followup.send(f"🔻 {username} degradato a **{new_role['name']}**.")
         else:
             await interaction.followup.send("❌ Errore nella degradazione.")
 
-    @app_commands.command(
-        name="accept_group",
-        description="Accetta un utente nel gruppo Roblox assegnandogli il primo ruolo disponibile."
-    )
+    @app_commands.command(name="accept_group", description="Accetta un utente nel gruppo Roblox.")
     @app_commands.describe(username="Username Roblox")
     async def accept_group(self, interaction: Interaction, username: str):
         await interaction.response.defer()
-
         user_id = self.get_user_id(username)
         if not user_id:
             await interaction.followup.send("❌ Username non valido.")
             return
 
         roles = sorted(self.get_group_roles(), key=lambda x: x["rank"])
-        default_role = next(
-            (r for r in roles if r["rank"] > 0 and not r["name"].lower().startswith("guest")),
-            None
-        )
-
+        default_role = next((r for r in roles if r["rank"] > 0 and not r["name"].lower().startswith("guest")), None)
         if not default_role:
             await interaction.followup.send("❌ Nessun ruolo valido trovato.")
             return
 
         success = self.set_user_role(user_id, default_role["id"])
-
         if success:
-            await interaction.followup.send(
-                f"✅ {username} è stato accettato nel gruppo con il ruolo **{default_role['name']}**."
-            )
+            await interaction.followup.send(f"✅ {username} accettato nel gruppo con ruolo **{default_role['name']}**.")
         else:
-            await interaction.followup.send(
-                "❌ Errore durante l'assegnazione del ruolo. Verifica il cookie o i permessi."
-            )
+            await interaction.followup.send("❌ Errore nell'assegnazione del ruolo. Verifica il cookie o i permessi.")
 
 #---------------------------------------------------------------------------------------------------------------------------
 
